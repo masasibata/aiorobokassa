@@ -27,10 +27,10 @@ SuccessURLNotification
    :members:
    :undoc-members:
 
-InvoiceRequest
---------------
+InvoiceItem
+------------
 
-.. autoclass:: aiorobokassa.models.requests.InvoiceRequest
+.. autoclass:: aiorobokassa.models.requests.InvoiceItem
    :members:
    :undoc-members:
 

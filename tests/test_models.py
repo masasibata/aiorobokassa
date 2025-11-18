@@ -5,7 +5,7 @@ from decimal import Decimal
 from pydantic import ValidationError
 
 from aiorobokassa.models.requests import (
-    InvoiceRequest,
+    InvoiceItem,
     PaymentRequest,
     RefundRequest,
     ResultURLNotification,
@@ -125,41 +125,59 @@ class TestSuccessURLNotification:
         assert notification.signature_value == "ABC123"
 
 
-class TestInvoiceRequest:
-    """Tests for InvoiceRequest model."""
+class TestInvoiceItem:
+    """Tests for InvoiceItem model."""
 
-    def test_invoice_request_valid(self):
-        """Test creating valid invoice request."""
-        request = InvoiceRequest(
-            merchant_login="test_merchant",
-            out_sum=Decimal("100.50"),
-            description="Test invoice",
-            inv_id=12345,
-            email="test@example.com",
+    def test_invoice_item_valid(self):
+        """Test creating valid invoice item."""
+        from aiorobokassa.enums import TaxRate, PaymentMethod, PaymentObject
+
+        item = InvoiceItem(
+            name="Test Item",
+            quantity=2,
+            cost=50.0,
+            tax=TaxRate.VAT20,
+            payment_method=PaymentMethod.FULL_PAYMENT,
+            payment_object=PaymentObject.COMMODITY,
         )
-        assert request.merchant_login == "test_merchant"
-        assert request.out_sum == Decimal("100.50")
-        assert request.description == "Test invoice"
-        assert request.inv_id == 12345
+        assert item.name == "Test Item"
+        assert item.quantity == 2
+        assert item.cost == 50.0
+        assert item.tax == TaxRate.VAT20
 
-    def test_invoice_request_negative_amount(self):
-        """Test that negative amount raises validation error."""
-        with pytest.raises(ValidationError):
-            InvoiceRequest(
-                merchant_login="test_merchant",
-                out_sum=Decimal("-100.50"),
-                description="Test",
-            )
+    def test_invoice_item_minimal(self):
+        """Test creating minimal invoice item."""
+        from aiorobokassa.enums import TaxRate
 
-    def test_invoice_request_with_user_parameters(self):
-        """Test invoice request with user parameters."""
-        request = InvoiceRequest(
-            merchant_login="test_merchant",
-            out_sum=Decimal("100.50"),
-            description="Test",
-            user_parameters={"param1": "value1"},
+        item = InvoiceItem(
+            name="Test Item",
+            quantity=1,
+            cost=100.0,
+            tax=TaxRate.VAT20,
         )
-        assert request.user_parameters == {"param1": "value1"}
+        assert item.name == "Test Item"
+        assert item.quantity == 1
+        assert item.cost == 100.0
+
+    def test_invoice_item_to_api_dict(self):
+        """Test converting invoice item to API dict."""
+        from aiorobokassa.enums import TaxRate, PaymentMethod, PaymentObject
+
+        item = InvoiceItem(
+            name="Test Item",
+            quantity=2,
+            cost=50.0,
+            tax=TaxRate.VAT20,
+            payment_method=PaymentMethod.FULL_PAYMENT,
+            payment_object=PaymentObject.COMMODITY,
+        )
+        api_dict = item.to_api_dict()
+        assert api_dict["Name"] == "Test Item"
+        assert api_dict["Quantity"] == 2.0
+        assert api_dict["Cost"] == 50.0
+        assert api_dict["Tax"] == "vat20"
+        assert api_dict["PaymentMethod"] == "full_payment"
+        assert api_dict["PaymentObject"] == "commodity"
 
 
 class TestRefundRequest:

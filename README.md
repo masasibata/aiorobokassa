@@ -9,7 +9,7 @@ Async Python library for RoboKassa payment gateway integration.
 - ✅ **Full async/await support** with `aiohttp` for high performance
 - ✅ **Payment link generation** with customizable parameters
 - ✅ **Notification handling** (ResultURL, SuccessURL) with signature verification
-- ✅ **Invoice creation** via XML API
+- ✅ **Invoice creation** via Invoice API (JWT-based)
 - ✅ **Refund operations** (full and partial)
 - ✅ **Fiscalization support** (Receipt) with Pydantic models and enums for ФЗ-54 compliance
 - ✅ **Signature verification** (MD5, SHA256, SHA512)
@@ -146,12 +146,14 @@ async def handle_success_url(request_params: dict):
         return "Payment verification failed"
 ```
 
-### Creating Invoice via XML API
+### Creating Invoice
 
 ```python
 import asyncio
 from decimal import Decimal
-from aiorobokassa import RoboKassaClient
+from aiorobokassa import RoboKassaClient, InvoiceType
+from aiorobokassa.models.requests import InvoiceItem
+from aiorobokassa.enums import TaxRate, PaymentMethod, PaymentObject
 
 async def main():
     async with RoboKassaClient(
@@ -160,14 +162,35 @@ async def main():
         password2="password2",
         test_mode=True,
     ) as client:
+        # Simple invoice
         result = await client.create_invoice(
             out_sum=Decimal("100.00"),
             description="Invoice payment",
+            invoice_type=InvoiceType.ONE_TIME,
             inv_id=123,
-            email="customer@example.com",
+            culture="ru",
         )
 
-        print(f"Invoice created: {result}")
+        print(f"Invoice URL: {result['url']}")
+        print(f"Invoice ID: {result['id']}")
+
+        # Invoice with fiscalization
+        invoice_items = [
+            InvoiceItem(
+                name="Service 1",
+                quantity=1,
+                cost=100.0,
+                tax=TaxRate.VAT20,
+                payment_method=PaymentMethod.FULL_PAYMENT,
+                payment_object=PaymentObject.SERVICE,
+            )
+        ]
+
+        result = await client.create_invoice(
+            out_sum=Decimal("100.00"),
+            description="Invoice with items",
+            invoice_items=invoice_items,
+        )
 
 asyncio.run(main())
 ```
@@ -367,18 +390,24 @@ RoboKassaClient.parse_success_url_params(params: Dict[str, str]) -> Dict[str, st
 
 #### `create_invoice()`
 
-Create invoice via XML API.
+Create invoice via Invoice API (JWT-based).
 
 ```python
 async client.create_invoice(
-    out_sum: Decimal,
+    out_sum: Union[Decimal, float, int, str],
     description: str,
+    invoice_type: Union[InvoiceType, str] = InvoiceType.ONE_TIME,
     inv_id: Optional[int] = None,
-    email: Optional[str] = None,
-    expiration_date: Optional[str] = None,
-    user_parameters: Optional[Dict[str, str]] = None,
-    signature_algorithm: str = "MD5",
-) -> Dict[str, str]
+    culture: Optional[str] = None,
+    merchant_comments: Optional[str] = None,
+    invoice_items: Optional[List[InvoiceItem]] = None,
+    user_fields: Optional[Dict[str, str]] = None,
+    success_url: Optional[str] = None,
+    success_url_method: str = "GET",
+    fail_url: Optional[str] = None,
+    fail_url_method: str = "GET",
+    signature_algorithm: Union[str, SignatureAlgorithm] = "MD5",
+) -> Dict[str, Any]
 ```
 
 #### `create_refund()`

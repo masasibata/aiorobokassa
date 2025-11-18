@@ -2,7 +2,7 @@
 
 from aiorobokassa.models.receipt import Receipt, ReceiptItem
 from aiorobokassa.models.requests import (
-    InvoiceRequest,
+    InvoiceItem,
     PaymentRequest,
     RefundRequest,
     ResultURLNotification,
@@ -13,7 +13,7 @@ __all__ = [
     "PaymentRequest",
     "ResultURLNotification",
     "SuccessURLNotification",
-    "InvoiceRequest",
+    "InvoiceItem",
     "RefundRequest",
     "Receipt",
     "ReceiptItem",

@@ -6,6 +6,7 @@ from typing import Any, Dict, Optional, Union
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from aiorobokassa.enums import PaymentMethod, PaymentObject, TaxRate
 from aiorobokassa.models.receipt import Receipt
 
 
@@ -107,40 +108,44 @@ class SuccessURLNotification(BaseModel):
     shp_params: Optional[Dict[str, str]] = Field(None, description="Additional parameters")
 
 
-class InvoiceRequest(BaseModel):
-    """Model for invoice creation via XML API."""
+class InvoiceItem(BaseModel):
+    """Model for invoice item."""
 
-    merchant_login: str = Field(..., description="Merchant login")
-    out_sum: Union[Decimal, float, int, str] = Field(
-        ..., description="Payment amount (Decimal, float, int, or string)"
+    name: str = Field(..., description="Item name (max 128 characters)", max_length=128)
+    quantity: Union[int, float, Decimal] = Field(..., description="Item quantity", gt=0)
+    cost: Union[float, Decimal] = Field(..., description="Price per unit", ge=0)
+    tax: TaxRate = Field(..., description="Tax rate")
+    payment_method: Optional[PaymentMethod] = Field(None, description="Payment method")
+    payment_object: Optional[PaymentObject] = Field(None, description="Payment object")
+    nomenclature_code: Optional[str] = Field(
+        None, description="Product marking code (required for marked products)"
     )
-    description: str = Field(..., description="Payment description")
-    inv_id: Optional[int] = Field(None, description="Invoice ID")
-    email: Optional[str] = Field(None, description="Customer email")
-    expiration_date: Optional[str] = Field(None, description="Payment expiration date")
-    user_parameters: Optional[Dict[str, str]] = Field(None, description="Additional parameters")
 
-    @field_validator("out_sum", mode="before")
+    @field_validator("name")
     @classmethod
-    def validate_amount(cls, v: Union[Decimal, float, int, str]) -> Decimal:
-        """Validate and convert payment amount to Decimal."""
-        # Convert to Decimal
-        if isinstance(v, Decimal):
-            amount = v
-        elif isinstance(v, (int, float)):
-            amount = Decimal(str(v))
-        elif isinstance(v, str):
-            try:
-                amount = Decimal(v)
-            except (ValueError, TypeError) as e:
-                raise ValueError(f"Invalid amount format: {v}") from e
-        else:
-            raise ValueError(f"Amount must be Decimal, float, int, or string, got {type(v)}")
+    def validate_name(cls, v: str) -> str:
+        """Validate item name."""
+        if not v.strip():
+            raise ValueError("Item name cannot be empty")
+        if len(v) > 128:
+            raise ValueError("Item name cannot exceed 128 characters")
+        return v.strip()
 
-        # Validate amount is positive
-        if amount <= 0:
-            raise ValueError("Payment amount must be positive")
-        return amount
+    def to_api_dict(self) -> Dict[str, Any]:
+        """Convert to dict for API (camelCase keys)."""
+        data: Dict[str, Any] = {
+            "Name": self.name,
+            "Quantity": float(self.quantity),
+            "Cost": float(self.cost),
+            "Tax": self.tax.value,
+        }
+        if self.payment_method:
+            data["PaymentMethod"] = self.payment_method.value
+        if self.payment_object:
+            data["PaymentObject"] = self.payment_object.value
+        if self.nomenclature_code:
+            data["NomenclatureCode"] = self.nomenclature_code
+        return data
 
 
 class RefundRequest(BaseModel):

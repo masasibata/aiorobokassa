@@ -3,6 +3,8 @@
 from aiorobokassa.client import RoboKassaClient
 from aiorobokassa.enums import (
     Culture,
+    InvoiceStatus,
+    InvoiceType,
     PaymentMethod,
     PaymentObject,
     SignatureAlgorithm,
@@ -20,7 +22,7 @@ from aiorobokassa.exceptions import (
 )
 from aiorobokassa.models.receipt import Receipt, ReceiptItem
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 
 __all__ = [
     "RoboKassaClient",
@@ -30,6 +32,8 @@ __all__ = [
     "TaxRate",
     "PaymentMethod",
     "PaymentObject",
+    "InvoiceType",
+    "InvoiceStatus",
     "Receipt",
     "ReceiptItem",
     "RoboKassaError",

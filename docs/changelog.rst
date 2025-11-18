@@ -14,7 +14,7 @@ Features
 - Async/await support with aiohttp
 - Payment link generation
 - Notification handling (ResultURL, SuccessURL)
-- Invoice creation via XML API
+- Invoice creation via Invoice API (JWT-based)
 - Refund operations
 - Fiscalization support (Receipt) with Pydantic models and enums for ФЗ-54 compliance
 - Signature verification (MD5, SHA256, SHA512)
@@ -34,7 +34,7 @@ Features
 - Async/await support with aiohttp
 - Payment link generation
 - Notification handling (ResultURL, SuccessURL)
-- Invoice creation via XML API
+- Invoice creation via Invoice API (JWT-based)
 - Refund operations
 - Signature verification (MD5, SHA256, SHA512)
 - Type hints and Pydantic validation

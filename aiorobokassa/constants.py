@@ -9,6 +9,7 @@ TEST_BASE_URL: Final[str] = "https://auth.robokassa.ru"
 # API Endpoints
 PAYMENT_ENDPOINT: Final[str] = "/Merchant/Index.aspx"
 XML_SERVICE_ENDPOINT: Final[str] = "/Merchant/WebService/Service.asmx"
+INVOICE_API_BASE_URL: Final[str] = "https://services.robokassa.ru/InvoiceServiceWebApi/api"
 
 # Default values
 DEFAULT_CULTURE: Final[str] = "ru"

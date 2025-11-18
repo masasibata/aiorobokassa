@@ -90,3 +90,18 @@ class PaymentObject(str, Enum):
     INSURANCE_PREMIUM = "insurance_premium"  # Страховые взносы
     SALES_TAX = "sales_tax"  # Торговый сбор
     TOVAR_MARK = "tovar_mark"  # Товар, подлежащий маркировке
+
+
+class InvoiceType(str, Enum):
+    """Invoice type for Invoice API v2."""
+
+    ONE_TIME = "OneTime"  # Одноразовая ссылка
+    REUSABLE = "Reusable"  # Многоразовая ссылка
+
+
+class InvoiceStatus(str, Enum):
+    """Invoice status for Invoice API v2."""
+
+    PAID = "paid"  # Оплаченные
+    EXPIRED = "expired"  # Просроченные
+    NOT_PAID = "notpaid"  # Неоплаченные

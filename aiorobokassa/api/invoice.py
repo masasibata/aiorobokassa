@@ -1,19 +1,16 @@
 """Invoice operations for RoboKassa API."""
 
 from decimal import Decimal
-from typing import TYPE_CHECKING, Dict, Optional, Union, cast
-from xml.etree import ElementTree as ET
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union, cast
 
 if TYPE_CHECKING:
     from aiorobokassa.api._protocols import ClientProtocol
 
-from aiorobokassa.constants import (
-    DEFAULT_SIGNATURE_ALGORITHM,
-    XML_CONTENT_TYPE,
-    XML_SERVICE_ENDPOINT,
-)
-from aiorobokassa.enums import SignatureAlgorithm
-from aiorobokassa.models.requests import InvoiceRequest
+from aiorobokassa.constants import DEFAULT_SIGNATURE_ALGORITHM, INVOICE_API_BASE_URL
+from aiorobokassa.enums import InvoiceType, SignatureAlgorithm
+from aiorobokassa.exceptions import APIError
+from aiorobokassa.models.requests import InvoiceItem
+from aiorobokassa.utils.jwt import create_jwt_token
 
 
 class InvoiceMixin:
@@ -23,60 +20,244 @@ class InvoiceMixin:
         self,
         out_sum: Union[Decimal, float, int, str],
         description: str,
+        invoice_type: Union[InvoiceType, str] = InvoiceType.ONE_TIME,
         inv_id: Optional[int] = None,
-        email: Optional[str] = None,
-        expiration_date: Optional[str] = None,
-        user_parameters: Optional[Dict[str, str]] = None,
+        culture: Optional[str] = None,
+        merchant_comments: Optional[str] = None,
+        invoice_items: Optional[List[InvoiceItem]] = None,
+        user_fields: Optional[Dict[str, str]] = None,
+        success_url: Optional[str] = None,
+        success_url_method: str = "GET",
+        fail_url: Optional[str] = None,
+        fail_url_method: str = "GET",
         signature_algorithm: Union[str, SignatureAlgorithm] = DEFAULT_SIGNATURE_ALGORITHM,
-    ) -> Dict[str, str]:
-        """Create invoice via XML API."""
+    ) -> Dict[str, Any]:
+        """
+        Create invoice via Invoice API (JWT-based).
+
+        Args:
+            out_sum: Payment amount
+            description: Payment description
+            invoice_type: Invoice type (OneTime or Reusable)
+            inv_id: Invoice ID (optional)
+            culture: Language code (ru, en) (optional)
+            merchant_comments: Internal comment for staff (optional)
+            invoice_items: List of invoice items for fiscalization (optional)
+            user_fields: Additional user parameters (optional)
+            success_url: Success redirect URL (optional)
+            success_url_method: HTTP method for success URL (GET or POST)
+            fail_url: Fail redirect URL (optional)
+            fail_url_method: HTTP method for fail URL (GET or POST)
+            signature_algorithm: Signature algorithm (optional, default: MD5)
+
+        Returns:
+            Dictionary with invoice information (id, url, etc.)
+
+        Raises:
+            APIError: If invoice creation fails
+        """
         if TYPE_CHECKING:
             client = cast("ClientProtocol", self)
         else:
             client = self  # type: ignore[assignment]
-        request = InvoiceRequest(
-            merchant_login=client.merchant_login,
-            out_sum=out_sum,
-            description=description,
-            inv_id=inv_id,
-            email=email,
-            expiration_date=expiration_date,
-            user_parameters=user_parameters,
-        )
 
-        base_data = {
+        # Convert invoice_type to string if enum
+        if isinstance(invoice_type, InvoiceType):
+            invoice_type_str = invoice_type.value
+        else:
+            invoice_type_str = str(invoice_type)
+
+        # Build payload
+        payload: Dict[str, Any] = {
             "MerchantLogin": client.merchant_login,
-            "Amount": str(request.out_sum),
-            "Description": request.description,
+            "InvoiceType": invoice_type_str,
+            "OutSum": float(Decimal(str(out_sum))),
+            "Description": description,
         }
 
-        optional_fields: Dict[str, Optional[str]] = {}
-        if request.inv_id is not None:
-            optional_fields["InvoiceID"] = str(request.inv_id)
-        if request.email:
-            optional_fields["Email"] = request.email
-        if request.expiration_date:
-            optional_fields["ExpirationDate"] = request.expiration_date
+        if inv_id is not None:
+            payload["InvId"] = inv_id
+        if culture:
+            payload["Culture"] = culture
+        if merchant_comments:
+            payload["MerchantComments"] = merchant_comments
+        if user_fields:
+            payload["UserFields"] = user_fields
 
-        root = client._build_xml_and_signature(
-            "OperationRequest", base_data, optional_fields, signature_algorithm
-        )
+        # Add invoice items if provided
+        if invoice_items:
+            payload["InvoiceItems"] = [item.to_api_dict() for item in invoice_items]
 
-        if request.user_parameters:
-            params_elem = ET.SubElement(root, "Params")
-            for key, value in request.user_parameters.items():
-                param_elem = ET.SubElement(params_elem, "Param")
-                ET.SubElement(param_elem, "Name").text = f"Shp_{key}"
-                ET.SubElement(param_elem, "Value").text = value
+        # Add URL redirects if provided
+        if success_url:
+            payload["SuccessUrl2Data"] = {"Url": success_url, "Method": success_url_method}
+        if fail_url:
+            payload["FailUrl2Data"] = {"Url": fail_url, "Method": fail_url_method}
 
-        xml_string = ET.tostring(root, encoding="utf-8", method="xml").decode("utf-8")
+        # Create JWT token
+        secret_key = f"{client.merchant_login}:{client.password1}"
+        jwt_token = create_jwt_token(payload, secret_key, signature_algorithm)
 
+        # Send request (JWT token as string in request body, not JSON)
         response = await client._post(
-            f"{client.base_url}{XML_SERVICE_ENDPOINT}/OpState",
-            data=xml_string,
-            headers={"Content-Type": XML_CONTENT_TYPE},
+            f"{INVOICE_API_BASE_URL}/CreateInvoice",
+            data=jwt_token,
+            headers={"Content-Type": "application/json"},
         )
         async with response:
-            response_text = await response.text()
-            result = client._parse_xml_response(response_text)
-            return result
+            result = await response.json()
+
+            if not result.get("isSuccess", False):
+                error_message = result.get("errorMessage", "Failed to create invoice")
+                raise APIError(f"Invoice creation failed: {error_message}")
+
+            return {
+                "id": result.get("id"),
+                "url": result.get("url"),
+                "inv_id": result.get("invId"),
+                "encoded_id": result.get("encodedId"),
+            }
+
+    async def deactivate_invoice(
+        self,
+        inv_id: Optional[int] = None,
+        invoice_id: Optional[str] = None,
+        encoded_id: Optional[str] = None,
+        signature_algorithm: Union[str, SignatureAlgorithm] = DEFAULT_SIGNATURE_ALGORITHM,
+    ) -> None:
+        """
+        Deactivate invoice.
+
+        Args:
+            inv_id: Invoice ID (number specified by merchant)
+            invoice_id: Invoice identifier (returned from create_invoice)
+            encoded_id: Encoded invoice ID (last part of invoice URL)
+            signature_algorithm: Signature algorithm (optional, default: MD5)
+
+        Raises:
+            APIError: If deactivation fails
+            ValueError: If no identifier is provided
+        """
+        if TYPE_CHECKING:
+            client = cast("ClientProtocol", self)
+        else:
+            client = self  # type: ignore[assignment]
+
+        if not any([inv_id, invoice_id, encoded_id]):
+            raise ValueError(
+                "At least one identifier (inv_id, invoice_id, or encoded_id) must be provided"
+            )
+
+        # Build payload
+        payload: Dict[str, Any] = {"MerchantLogin": client.merchant_login}
+        if inv_id is not None:
+            payload["InvId"] = inv_id
+        if invoice_id:
+            payload["Id"] = invoice_id
+        if encoded_id:
+            payload["EncodedId"] = encoded_id
+
+        # Create JWT token
+        secret_key = f"{client.merchant_login}:{client.password1}"
+        jwt_token = create_jwt_token(payload, secret_key, signature_algorithm)
+
+        # Send request (JWT token as string in request body, not JSON)
+        response = await client._post(
+            f"{INVOICE_API_BASE_URL}/DeactivateInvoice",
+            data=jwt_token,
+            headers={"Content-Type": "application/json"},
+        )
+        async with response:
+            result = await response.json()
+
+            if not result.get("isSuccess", False):
+                error_message = result.get("errorMessage", "Failed to deactivate invoice")
+                raise APIError(f"Invoice deactivation failed: {error_message}")
+
+    async def get_invoice_information_list(
+        self,
+        current_page: int = 1,
+        page_size: int = 10,
+        invoice_statuses: Optional[List[str]] = None,
+        keywords: Optional[str] = None,
+        date_from: Optional[str] = None,
+        date_to: Optional[str] = None,
+        is_ascending: bool = True,
+        invoice_types: Optional[List[str]] = None,
+        payment_aliases: Optional[List[str]] = None,
+        sum_from: Optional[float] = None,
+        sum_to: Optional[float] = None,
+        signature_algorithm: Union[str, SignatureAlgorithm] = DEFAULT_SIGNATURE_ALGORITHM,
+    ) -> Dict[str, Any]:
+        """
+        Get invoice information list.
+
+        Args:
+            current_page: Current page number (from 1)
+            page_size: Page size (number of invoices per page)
+            invoice_statuses: List of invoice statuses (paid, expired, notpaid)
+            keywords: Search keywords
+            date_from: Start date (ISO 8601 format)
+            date_to: End date (ISO 8601 format)
+            is_ascending: Sort ascending
+            invoice_types: List of invoice types (onetime, reusable)
+            payment_aliases: List of payment method aliases
+            sum_from: Minimum invoice amount
+            sum_to: Maximum invoice amount
+            signature_algorithm: Signature algorithm (optional, default: MD5)
+
+        Returns:
+            Dictionary with invoice list and pagination info
+
+        Raises:
+            APIError: If request fails
+        """
+        if TYPE_CHECKING:
+            client = cast("ClientProtocol", self)
+        else:
+            client = self  # type: ignore[assignment]
+
+        # Build payload
+        payload: Dict[str, Any] = {
+            "MerchantLogin": client.merchant_login,
+            "CurrentPage": current_page,
+            "PageSize": page_size,
+        }
+
+        if invoice_statuses:
+            payload["InvoiceStatuses"] = invoice_statuses
+        if keywords:
+            payload["Keywords"] = keywords
+        if date_from:
+            payload["DateFrom"] = date_from
+        if date_to:
+            payload["DateTo"] = date_to
+        if is_ascending is not None:
+            payload["IsAscending"] = is_ascending
+        if invoice_types:
+            payload["InvoiceTypes"] = invoice_types
+        if payment_aliases:
+            payload["PaymentAliases"] = payment_aliases
+        if sum_from is not None:
+            payload["SumFrom"] = sum_from
+        if sum_to is not None:
+            payload["SumTo"] = sum_to
+
+        # Create JWT token
+        secret_key = f"{client.merchant_login}:{client.password1}"
+        jwt_token = create_jwt_token(payload, secret_key, signature_algorithm)
+
+        # Send request (JWT token as string in request body, not JSON)
+        response = await client._post(
+            f"{INVOICE_API_BASE_URL}/GetInvoiceInformationList",
+            data=jwt_token,
+            headers={"Content-Type": "application/json"},
+        )
+        async with response:
+            result = await response.json()
+
+            if not result.get("isSuccess", False):
+                error_message = result.get("errorMessage", "Failed to get invoice information")
+                raise APIError(f"Get invoice information failed: {error_message}")
+
+            return cast(Dict[str, Any], result)
