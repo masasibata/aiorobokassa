@@ -4,7 +4,6 @@ from decimal import Decimal
 from typing import TYPE_CHECKING, Dict, Optional, Union, cast
 
 if TYPE_CHECKING:
-    from typing import Any
     from aiorobokassa.api._protocols import ClientProtocol
 
 from aiorobokassa.constants import DEFAULT_SIGNATURE_ALGORITHM

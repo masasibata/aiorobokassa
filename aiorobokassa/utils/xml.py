@@ -4,7 +4,6 @@ from typing import TYPE_CHECKING, Dict, Optional, Union, cast
 from xml.etree import ElementTree as ET
 
 if TYPE_CHECKING:
-    from typing import Any
     from aiorobokassa.api._protocols import ClientProtocol
 
 from aiorobokassa.constants import (
@@ -89,7 +88,6 @@ class XMLMixin:
             data=xml_string,
             headers={"Content-Type": XML_CONTENT_TYPE},
         )
-
-        response_text = await response.text()
-        response.close()
-        return self._parse_xml_response(response_text)
+        async with response:
+            response_text = await response.text()
+            return self._parse_xml_response(response_text)

@@ -1,7 +1,14 @@
 """Async Python library for RoboKassa payment gateway."""
 
 from aiorobokassa.client import RoboKassaClient
-from aiorobokassa.enums import SignatureAlgorithm
+from aiorobokassa.enums import (
+    Culture,
+    PaymentMethod,
+    PaymentObject,
+    SignatureAlgorithm,
+    TaxRate,
+    TaxSystem,
+)
 from aiorobokassa.exceptions import (
     APIError,
     ConfigurationError,
@@ -11,12 +18,20 @@ from aiorobokassa.exceptions import (
     ValidationError,
     XMLParseError,
 )
+from aiorobokassa.models.receipt import Receipt, ReceiptItem
 
-__version__ = "0.1.0"
+__version__ = "1.0.0"
 
 __all__ = [
     "RoboKassaClient",
     "SignatureAlgorithm",
+    "Culture",
+    "TaxSystem",
+    "TaxRate",
+    "PaymentMethod",
+    "PaymentObject",
+    "Receipt",
+    "ReceiptItem",
     "RoboKassaError",
     "APIError",
     "SignatureError",

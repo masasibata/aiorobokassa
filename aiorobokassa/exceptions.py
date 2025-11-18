@@ -18,7 +18,9 @@ class SignatureError(RoboKassaError):
 class APIError(RoboKassaError):
     """Raised when API request fails."""
 
-    def __init__(self, message: str, status_code: Optional[int] = None, response: Optional[str] = None):
+    def __init__(
+        self, message: str, status_code: Optional[int] = None, response: Optional[str] = None
+    ):
         super().__init__(message)
         self.status_code = status_code
         self.response = response

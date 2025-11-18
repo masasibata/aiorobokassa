@@ -1,9 +1,12 @@
 """Pydantic models for request/response validation."""
 
+import json
 from decimal import Decimal
-from typing import Dict, Optional
+from typing import Any, Dict, Optional, Union
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from aiorobokassa.models.receipt import Receipt
 
 
 class PaymentRequest(BaseModel):
@@ -19,6 +22,9 @@ class PaymentRequest(BaseModel):
     expiration_date: Optional[str] = Field(None, description="Payment expiration date")
     user_parameters: Optional[Dict[str, str]] = Field(
         None, description="Additional user parameters"
+    )
+    receipt: Optional[Union[Receipt, str, Dict[str, Any]]] = Field(
+        None, description="Receipt data for fiscalization (Receipt model, JSON string or dict)"
     )
 
     @field_validator("out_sum")
@@ -37,29 +43,52 @@ class PaymentRequest(BaseModel):
             raise ValueError("Description cannot be empty")
         return v
 
+    @field_validator("receipt", mode="before")
+    @classmethod
+    def validate_receipt(cls, v: Union[Receipt, str, Dict[str, Any], None]) -> Optional[str]:
+        """Convert receipt to JSON string."""
+        if v is None:
+            return None
+        if isinstance(v, Receipt):
+            return v.to_json_string()
+        if isinstance(v, dict):
+            # Try to create Receipt from dict
+            try:
+                receipt = Receipt.from_dict(v)
+                return receipt.to_json_string()
+            except Exception:
+                # Fallback to direct JSON dump if Receipt model fails
+                return json.dumps(v, ensure_ascii=False)
+        if isinstance(v, str):
+            # Validate it's valid JSON
+            try:
+                json.loads(v)
+            except json.JSONDecodeError:
+                raise ValueError("receipt must be valid JSON string, dict or Receipt model")
+            return v
+        raise ValueError("receipt must be Receipt model, JSON string or dict")
+
 
 class ResultURLNotification(BaseModel):
     """Model for ResultURL notification from RoboKassa."""
+
+    model_config = ConfigDict(populate_by_name=True)
 
     out_sum: str = Field(..., description="Payment amount")
     inv_id: str = Field(..., description="Invoice ID")
     signature_value: str = Field(..., alias="SignatureValue", description="Signature")
     shp_params: Optional[Dict[str, str]] = Field(None, description="Additional parameters")
-
-    class Config:
-        populate_by_name = True
 
 
 class SuccessURLNotification(BaseModel):
     """Model for SuccessURL redirect from RoboKassa."""
 
+    model_config = ConfigDict(populate_by_name=True)
+
     out_sum: str = Field(..., description="Payment amount")
     inv_id: str = Field(..., description="Invoice ID")
     signature_value: str = Field(..., alias="SignatureValue", description="Signature")
     shp_params: Optional[Dict[str, str]] = Field(None, description="Additional parameters")
-
-    class Config:
-        populate_by_name = True
 
 
 class InvoiceRequest(BaseModel):

@@ -1,5 +1,6 @@
 """Models for aiorobokassa."""
 
+from aiorobokassa.models.receipt import Receipt, ReceiptItem
 from aiorobokassa.models.requests import (
     InvoiceRequest,
     PaymentRequest,
@@ -14,4 +15,6 @@ __all__ = [
     "SuccessURLNotification",
     "InvoiceRequest",
     "RefundRequest",
+    "Receipt",
+    "ReceiptItem",
 ]

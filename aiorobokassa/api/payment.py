@@ -1,10 +1,12 @@
 """Payment operations for RoboKassa API."""
 
 from decimal import Decimal
-from typing import TYPE_CHECKING, Dict, Optional, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, Optional, Union, cast
+from urllib.parse import quote
+
+from aiorobokassa.models.receipt import Receipt
 
 if TYPE_CHECKING:
-    from typing import Any
     from aiorobokassa.api._protocols import ClientProtocol
 
 from aiorobokassa.constants import (
@@ -69,13 +71,24 @@ class PaymentMixin:
         if request.user_parameters:
             params.update({f"Shp_{k}": v for k, v in request.user_parameters.items()})
 
-        # Calculate signature
+        # Receipt for fiscalization
+        receipt_str: Optional[str] = None
+        if request.receipt:
+            # Receipt is already JSON string after validation (validator converts it)
+            # Type ignore because validator ensures it's a string
+            receipt_str = request.receipt  # type: ignore[assignment]
+            # URL-encode receipt before adding to params
+            if receipt_str is not None:
+                params["Receipt"] = quote(receipt_str, safe="")
+
+        # Calculate signature (receipt must be included if present)
         signature = calculate_payment_signature(
             merchant_login=client.merchant_login,
             out_sum=str(request.out_sum),
             inv_id=str(request.inv_id) if request.inv_id else None,
             password=client.password1,
             algorithm=signature_algorithm,
+            receipt=receipt_str,  # Use original JSON string for signature
         )
         params["SignatureValue"] = signature
 
@@ -92,9 +105,28 @@ class PaymentMixin:
         is_test: Optional[int] = None,
         expiration_date: Optional[str] = None,
         user_parameters: Optional[Dict[str, str]] = None,
+        receipt: Optional[Union[Receipt, str, Dict[str, Any]]] = None,
         signature_algorithm: Union[str, SignatureAlgorithm] = DEFAULT_SIGNATURE_ALGORITHM,
     ) -> str:
-        """Create payment URL for RoboKassa."""
+        """
+        Create payment URL for RoboKassa.
+
+        Args:
+            out_sum: Payment amount
+            description: Payment description
+            inv_id: Invoice ID (optional)
+            email: Customer email (optional)
+            culture: Language code (ru, en) (optional)
+            encoding: Encoding (optional, default: utf-8)
+            is_test: Test mode flag (optional)
+            expiration_date: Payment expiration date (optional)
+            user_parameters: Additional user parameters (Shp_*) (optional)
+            receipt: Receipt data for fiscalization - Receipt model, JSON string or dict (optional)
+            signature_algorithm: Signature algorithm (optional, default: MD5)
+
+        Returns:
+            Payment URL string
+        """
         request = PaymentRequest(
             out_sum=out_sum,
             description=description,
@@ -105,6 +137,7 @@ class PaymentMixin:
             is_test=is_test,
             expiration_date=expiration_date,
             user_parameters=user_parameters,
+            receipt=receipt,
         )
 
         if TYPE_CHECKING:

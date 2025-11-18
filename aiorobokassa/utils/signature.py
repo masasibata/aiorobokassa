@@ -82,11 +82,13 @@ def calculate_payment_signature(
     inv_id: Optional[str],
     password: str,
     algorithm: Union[str, SignatureAlgorithm] = SignatureAlgorithm.MD5,
+    receipt: Optional[str] = None,
 ) -> str:
     """
     Calculate signature for payment URL.
 
-    Signature format: MD5(merchant_login:out_sum:inv_id:password1)
+    Signature format: MD5(merchant_login:out_sum:inv_id:receipt:password1)
+    If receipt is provided, it must be included in signature calculation.
 
     Args:
         merchant_login: Merchant login
@@ -94,6 +96,7 @@ def calculate_payment_signature(
         inv_id: Invoice ID (optional)
         password: Password (password1)
         algorithm: Hash algorithm
+        receipt: Receipt JSON string for fiscalization (optional)
 
     Returns:
         Signature string
@@ -104,6 +107,8 @@ def calculate_payment_signature(
     }
     if inv_id:
         values["InvId"] = inv_id
+    if receipt:
+        values["Receipt"] = receipt
 
     return calculate_signature(values, password, algorithm)
 

@@ -27,7 +27,7 @@ class ClientProtocol(Protocol):
         base_data: Dict[str, str],
         optional_fields: Dict[str, Optional[str]],
         signature_algorithm: str,
-    ) -> Element[str]:
+    ) -> Element:
         """Build XML and signature."""
         ...
 
@@ -41,4 +41,3 @@ class ClientProtocol(Protocol):
     ) -> Dict[str, str]:
         """Make XML request."""
         ...
-

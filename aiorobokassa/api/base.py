@@ -92,14 +92,14 @@ class BaseAPIClient:
             response = await self.session.request(method, url, **kwargs)
             logger.debug(f"Response status: {response.status}")
             if response.status >= 400:
-                text = await response.text()
-                response.close()
-                logger.error(f"API request failed with status {response.status}: {text}")
-                raise APIError(
-                    f"API request failed with status {response.status}",
-                    status_code=response.status,
-                    response=text,
-                )
+                async with response:
+                    text = await response.text()
+                    logger.error(f"API request failed with status {response.status}: {text}")
+                    raise APIError(
+                        f"API request failed with status {response.status}",
+                        status_code=response.status,
+                        response=text,
+                    )
             return response
         except aiohttp.ClientError as e:
             logger.error(f"Network error: {e}", exc_info=True)
