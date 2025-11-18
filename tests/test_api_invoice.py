@@ -4,7 +4,15 @@ import pytest
 from decimal import Decimal
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from aiorobokassa.enums import InvoiceType, SignatureAlgorithm, TaxRate, PaymentMethod, PaymentObject
+from aiorobokassa.enums import (
+    InvoiceType,
+    SignatureAlgorithm,
+    TaxRate,
+    PaymentMethod,
+    PaymentObject,
+    TaxSystem,
+)
+from aiorobokassa.models.receipt import Receipt, ReceiptItem
 from aiorobokassa.models.requests import InvoiceItem
 
 
@@ -231,3 +239,164 @@ class TestInvoiceMixin:
 
             assert result["isSuccess"] is True
             assert result["currentPage"] == 1
+
+    @pytest.mark.asyncio
+    async def test_create_invoice_with_receipt_model(self, client):
+        """Test creating invoice with Receipt model."""
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.json = AsyncMock(
+            return_value={"isSuccess": True, "id": "test-id", "url": "https://test.com"}
+        )
+        mock_response.close = MagicMock()
+
+        receipt = Receipt(
+            items=[
+                ReceiptItem(
+                    name="Item 1",
+                    quantity=1,
+                    cost=100.0,
+                    tax=TaxRate.VAT20,
+                    payment_method=PaymentMethod.FULL_PAYMENT,
+                    payment_object=PaymentObject.COMMODITY,
+                )
+            ],
+            sno=TaxSystem.OSN,
+        )
+
+        with patch.object(client, "_post", return_value=mock_response) as mock_post:
+            result = await client.create_invoice(
+                out_sum=Decimal("100.00"),
+                description="Test invoice",
+                receipt=receipt,
+            )
+
+            assert result["id"] == "test-id"
+            # Verify request was made
+            assert mock_post.called
+
+    @pytest.mark.asyncio
+    async def test_create_invoice_with_receipt_dict(self, client):
+        """Test creating invoice with receipt as dict."""
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.json = AsyncMock(
+            return_value={"isSuccess": True, "id": "test-id", "url": "https://test.com"}
+        )
+        mock_response.close = MagicMock()
+
+        receipt_dict = {
+            "items": [
+                {
+                    "name": "Item 1",
+                    "quantity": 1,
+                    "cost": 100.0,
+                    "tax": "vat20",
+                }
+            ],
+            "sno": "osn",
+        }
+
+        with patch.object(client, "_post", return_value=mock_response):
+            result = await client.create_invoice(
+                out_sum=Decimal("100.00"),
+                description="Test invoice",
+                receipt=receipt_dict,
+            )
+
+            assert result["id"] == "test-id"
+
+    @pytest.mark.asyncio
+    async def test_create_invoice_with_receipt_json_string(self, client):
+        """Test creating invoice with receipt as JSON string."""
+        import json
+
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.json = AsyncMock(
+            return_value={"isSuccess": True, "id": "test-id", "url": "https://test.com"}
+        )
+        mock_response.close = MagicMock()
+
+        receipt_json = json.dumps(
+            {
+                "items": [
+                    {
+                        "name": "Item 1",
+                        "quantity": 1,
+                        "cost": 100.0,
+                        "tax": "vat20",
+                    }
+                ],
+                "sno": "osn",
+            }
+        )
+
+        with patch.object(client, "_post", return_value=mock_response):
+            result = await client.create_invoice(
+                out_sum=Decimal("100.00"),
+                description="Test invoice",
+                receipt=receipt_json,
+            )
+
+            assert result["id"] == "test-id"
+
+    @pytest.mark.asyncio
+    async def test_create_invoice_receipt_and_invoice_items_conflict(self, client):
+        """Test that providing both receipt and invoice_items raises error."""
+        receipt = Receipt(
+            items=[
+                ReceiptItem(
+                    name="Item 1",
+                    quantity=1,
+                    cost=100.0,
+                    tax=TaxRate.VAT20,
+                )
+            ]
+        )
+        invoice_items = [
+            InvoiceItem(
+                name="Item 1",
+                quantity=1,
+                cost=100.0,
+                tax=TaxRate.VAT20,
+            )
+        ]
+
+        with pytest.raises(ValueError, match="Cannot provide both invoice_items and receipt"):
+            await client.create_invoice(
+                out_sum=Decimal("100.00"),
+                description="Test invoice",
+                receipt=receipt,
+                invoice_items=invoice_items,
+            )
+
+    @pytest.mark.asyncio
+    async def test_create_invoice_receipt_with_sum_instead_of_cost(self, client):
+        """Test creating invoice with receipt item that has sum instead of cost."""
+        mock_response = AsyncMock()
+        mock_response.status = 200
+        mock_response.json = AsyncMock(
+            return_value={"isSuccess": True, "id": "test-id", "url": "https://test.com"}
+        )
+        mock_response.close = MagicMock()
+
+        receipt = Receipt(
+            items=[
+                ReceiptItem(
+                    name="Item 1",
+                    quantity=2,
+                    sum=Decimal("200.0"),  # Using sum instead of cost
+                    tax=TaxRate.VAT20,
+                )
+            ]
+        )
+
+        with patch.object(client, "_post", return_value=mock_response):
+            result = await client.create_invoice(
+                out_sum=Decimal("200.00"),
+                description="Test invoice",
+                receipt=receipt,
+            )
+
+            assert result["id"] == "test-id"

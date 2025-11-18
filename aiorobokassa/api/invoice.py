@@ -9,6 +9,7 @@ if TYPE_CHECKING:
 from aiorobokassa.constants import DEFAULT_SIGNATURE_ALGORITHM, INVOICE_API_BASE_URL
 from aiorobokassa.enums import InvoiceType, SignatureAlgorithm
 from aiorobokassa.exceptions import APIError
+from aiorobokassa.models.receipt import Receipt
 from aiorobokassa.models.requests import InvoiceItem
 from aiorobokassa.utils.jwt import create_jwt_token
 
@@ -25,6 +26,7 @@ class InvoiceMixin:
         culture: Optional[str] = None,
         merchant_comments: Optional[str] = None,
         invoice_items: Optional[List[InvoiceItem]] = None,
+        receipt: Optional[Union[Receipt, str, Dict[str, Any]]] = None,
         user_fields: Optional[Dict[str, str]] = None,
         success_url: Optional[str] = None,
         success_url_method: str = "GET",
@@ -43,6 +45,8 @@ class InvoiceMixin:
             culture: Language code (ru, en) (optional)
             merchant_comments: Internal comment for staff (optional)
             invoice_items: List of invoice items for fiscalization (optional)
+            receipt: Receipt data for fiscalization - Receipt model, JSON string or dict (optional).
+                     If provided and invoice_items is not, receipt items will be converted to invoice_items.
             user_fields: Additional user parameters (optional)
             success_url: Success redirect URL (optional)
             success_url_method: HTTP method for success URL (GET or POST)
@@ -55,6 +59,7 @@ class InvoiceMixin:
 
         Raises:
             APIError: If invoice creation fails
+            ValueError: If both invoice_items and receipt are provided
         """
         if TYPE_CHECKING:
             client = cast("ClientProtocol", self)
@@ -83,6 +88,50 @@ class InvoiceMixin:
             payload["MerchantComments"] = merchant_comments
         if user_fields:
             payload["UserFields"] = user_fields
+
+        # Handle receipt and invoice_items
+        if invoice_items and receipt:
+            raise ValueError("Cannot provide both invoice_items and receipt. Use only one.")
+
+        # Convert receipt to invoice_items if receipt is provided and invoice_items is not
+        if receipt and not invoice_items:
+            # Parse receipt
+            if isinstance(receipt, Receipt):
+                receipt_model = receipt
+            elif isinstance(receipt, dict):
+                receipt_model = Receipt.from_dict(receipt)
+            elif isinstance(receipt, str):
+                import json
+
+                receipt_dict = json.loads(receipt)
+                receipt_model = Receipt.from_dict(receipt_dict)
+            else:
+                raise ValueError("receipt must be Receipt model, JSON string or dict")
+
+            # Convert ReceiptItem to InvoiceItem
+            invoice_items = []
+            for receipt_item in receipt_model.items:
+                # Calculate cost from sum/quantity if needed
+                cost_value: Union[float, Decimal] = 0.0
+                if receipt_item.cost is not None:
+                    cost_value = float(receipt_item.cost)
+                elif receipt_item.sum is not None:
+                    cost_value = float(receipt_item.sum / Decimal(str(receipt_item.quantity)))
+
+                invoice_item = InvoiceItem(
+                    name=receipt_item.name,
+                    quantity=receipt_item.quantity,
+                    cost=cost_value,
+                    tax=receipt_item.tax,
+                    payment_method=receipt_item.payment_method,
+                    payment_object=receipt_item.payment_object,
+                    nomenclature_code=receipt_item.nomenclature_code,
+                )
+                invoice_items.append(invoice_item)
+
+            # Add Sno from receipt if present
+            if receipt_model.sno:
+                payload["Sno"] = receipt_model.sno.value
 
         # Add invoice items if provided
         if invoice_items:
