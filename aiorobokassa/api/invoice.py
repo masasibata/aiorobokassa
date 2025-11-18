@@ -147,10 +147,10 @@ class InvoiceMixin:
         secret_key = f"{client.merchant_login}:{client.password1}"
         jwt_token = create_jwt_token(payload, secret_key, signature_algorithm)
 
-        # Send request (JWT token as string in request body, not JSON)
+        # Send request (JWT token wrapped in JSON object with "request" field)
         response = await client._post(
             f"{INVOICE_API_BASE_URL}/CreateInvoice",
-            data=jwt_token,
+            json={"request": jwt_token},
             headers={"Content-Type": "application/json"},
         )
         async with response:
@@ -210,10 +210,10 @@ class InvoiceMixin:
         secret_key = f"{client.merchant_login}:{client.password1}"
         jwt_token = create_jwt_token(payload, secret_key, signature_algorithm)
 
-        # Send request (JWT token as string in request body, not JSON)
+        # Send request (JWT token wrapped in JSON object with "request" field)
         response = await client._post(
             f"{INVOICE_API_BASE_URL}/DeactivateInvoice",
-            data=jwt_token,
+            json={"request": jwt_token},
             headers={"Content-Type": "application/json"},
         )
         async with response:
@@ -296,10 +296,10 @@ class InvoiceMixin:
         secret_key = f"{client.merchant_login}:{client.password1}"
         jwt_token = create_jwt_token(payload, secret_key, signature_algorithm)
 
-        # Send request (JWT token as string in request body, not JSON)
+        # Send request (JWT token wrapped in JSON object with "request" field)
         response = await client._post(
             f"{INVOICE_API_BASE_URL}/GetInvoiceInformationList",
-            data=jwt_token,
+            json={"request": jwt_token},
             headers={"Content-Type": "application/json"},
         )
         async with response:

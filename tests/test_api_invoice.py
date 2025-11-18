@@ -112,8 +112,11 @@ class TestInvoiceMixin:
             # Verify endpoint
             assert "CreateInvoice" in call_args[0][0]
 
-            # Verify JWT token is sent as data (string)
-            jwt_token = call_args[1]["data"]
+            # Verify JWT token is sent in JSON object with "request" field
+            request_data = call_args[1]["json"]
+            assert isinstance(request_data, dict)
+            assert "request" in request_data
+            jwt_token = request_data["request"]
             assert isinstance(jwt_token, str)
             assert len(jwt_token.split(".")) == 3  # JWT has 3 parts
 
