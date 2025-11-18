@@ -68,7 +68,7 @@ Raised when data validation fails:
    from decimal import Decimal
 
    try:
-       url = await client.create_payment_url(
+       url = client.create_payment_url(
            out_sum=Decimal("-100.00"),  # Invalid: negative amount
            description="",  # Invalid: empty description
        )
@@ -148,7 +148,7 @@ Example: Complete Error Handling
            return None
        
        try:
-           url = await client.create_payment_url(
+           url = client.create_payment_url(
                out_sum=amount,
                description=description,
            )

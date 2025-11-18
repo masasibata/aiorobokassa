@@ -64,7 +64,7 @@ Generate a payment URL to redirect users to RoboKassa:
        password2="password2",
        test_mode=True,
    ) as client:
-       payment_url = await client.create_payment_url(
+       payment_url = client.create_payment_url(
            out_sum=Decimal("100.00"),
            description="Test payment",
            inv_id=123,
@@ -95,6 +95,7 @@ Verify incoming notifications from RoboKassa:
                out_sum=params["out_sum"],
                inv_id=params["inv_id"],
                signature_value=params["signature_value"],
+               shp_params=params.get("shp_params"),
            )
            # Payment is valid, update your database
            return f"OK{params['inv_id']}"

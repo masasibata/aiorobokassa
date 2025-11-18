@@ -68,6 +68,7 @@ Example with Django:
                out_sum=params["out_sum"],
                inv_id=params["inv_id"],
                signature_value=params["signature_value"],
+               shp_params=params.get("shp_params"),
            )
            # Update database
            return HttpResponse(f"OK{params['inv_id']}")
@@ -144,7 +145,7 @@ When creating payment URL:
 .. code-block:: python
 
    # When creating payment URL
-   url = await client.create_payment_url(
+   url = client.create_payment_url(
        out_sum=Decimal("100.00"),
        description="Payment",
        user_parameters={"user_id": "123", "order_id": "456"},

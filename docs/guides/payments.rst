@@ -18,7 +18,7 @@ The simplest way to create a payment URL:
        password1="password1",
        password2="password2",
    ) as client:
-       url = await client.create_payment_url(
+       url = client.create_payment_url(
            out_sum=Decimal("100.00"),
            description="Payment for order #123",
        )
@@ -30,7 +30,7 @@ Include an invoice ID to track payments:
 
 .. code-block:: python
 
-   url = await client.create_payment_url(
+   url = client.create_payment_url(
        out_sum=Decimal("100.00"),
        description="Payment for order #123",
        inv_id=12345,
@@ -43,7 +43,7 @@ Send payment receipt to customer email:
 
 .. code-block:: python
 
-   url = await client.create_payment_url(
+   url = client.create_payment_url(
        out_sum=Decimal("100.00"),
        description="Payment for order #123",
        inv_id=12345,
@@ -57,7 +57,7 @@ Add custom user parameters (Shp_*):
 
 .. code-block:: python
 
-   url = await client.create_payment_url(
+   url = client.create_payment_url(
        out_sum=Decimal("100.00"),
        description="Payment for order #123",
        inv_id=12345,
@@ -76,7 +76,7 @@ Specify language and encoding:
 
 .. code-block:: python
 
-   url = await client.create_payment_url(
+   url = client.create_payment_url(
        out_sum=Decimal("100.00"),
        description="Payment for order #123",
        culture="en",  # or "ru"
@@ -92,7 +92,7 @@ Choose signature algorithm (MD5, SHA256, or SHA512):
 
    from aiorobokassa import RoboKassaClient, SignatureAlgorithm
 
-   url = await client.create_payment_url(
+   url = client.create_payment_url(
        out_sum=Decimal("100.00"),
        description="Payment for order #123",
        signature_algorithm=SignatureAlgorithm.SHA256,
@@ -109,7 +109,7 @@ Set payment expiration date:
 
    expiration = (datetime.now() + timedelta(days=7)).strftime("%Y-%m-%d %H:%M:%S")
    
-   url = await client.create_payment_url(
+   url = client.create_payment_url(
        out_sum=Decimal("100.00"),
        description="Payment for order #123",
        expiration_date=expiration,
@@ -152,7 +152,7 @@ Basic example with receipt:
        ],
    }
    
-   url = await client.create_payment_url(
+   url = client.create_payment_url(
        out_sum=Decimal("100.00"),
        description="Payment",
        receipt=receipt_data,

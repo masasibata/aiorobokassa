@@ -25,14 +25,14 @@ Specify algorithm when creating payment URL:
        password2="password2",
    ) as client:
        # Use SHA256
-       url = await client.create_payment_url(
+       url = client.create_payment_url(
            out_sum=Decimal("100.00"),
            description="Payment",
            signature_algorithm=SignatureAlgorithm.SHA256,
        )
        
        # Use SHA512
-       url = await client.create_payment_url(
+       url = client.create_payment_url(
            out_sum=Decimal("100.00"),
            description="Payment",
            signature_algorithm=SignatureAlgorithm.SHA512,

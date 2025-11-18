@@ -91,7 +91,7 @@ async def main():
     )
 
     # Create payment URL
-    payment_url = await client.create_payment_url(
+    payment_url = client.create_payment_url(
         out_sum=Decimal("100.00"),
         description="Test payment",
         inv_id=123,
@@ -127,7 +127,7 @@ from decimal import Decimal
 from aiorobokassa import RoboKassaClient
 
 # Create payment URL
-payment_url = await client.create_payment_url(
+payment_url = client.create_payment_url(
     out_sum=Decimal("100.00"),
     description="Payment for order #12345",
     inv_id=12345,
@@ -151,6 +151,7 @@ client.verify_success_url(
     out_sum=params["out_sum"],
     inv_id=params["inv_id"],
     signature_value=params["signature_value"],
+    shp_params=params.get("shp_params"),
 )
 ```
 
@@ -260,7 +261,7 @@ receipt = Receipt(
 )
 
 # Create payment URL with receipt
-url = await client.create_payment_url(
+url = client.create_payment_url(
     out_sum=Decimal("100.00"),
     description="Payment with receipt",
     receipt=receipt,
@@ -346,7 +347,7 @@ async with RoboKassaClient(
     password2="password2",
     test_mode=True,
 ) as client:
-    payment_url = await client.create_payment_url(
+    payment_url = client.create_payment_url(
         out_sum=Decimal("100.00"),
         description="Test payment",
     )

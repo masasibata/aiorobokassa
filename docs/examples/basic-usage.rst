@@ -19,7 +19,7 @@ Create Payment URL
            password2="password2",
            test_mode=True,
        ) as client:
-           url = await client.create_payment_url(
+           url = client.create_payment_url(
                out_sum=Decimal("100.00"),
                description="Test payment",
                inv_id=123,
@@ -49,6 +49,7 @@ Verify Notification
                out_sum=parsed["out_sum"],
                inv_id=parsed["inv_id"],
                signature_value=parsed["signature_value"],
+               shp_params=parsed.get("shp_params"),
            )
            return True
        except SignatureError:

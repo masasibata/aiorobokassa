@@ -50,7 +50,7 @@
            sno=TaxSystem.OSN,
        )
        
-       url = await client.create_payment_url(
+       url = client.create_payment_url(
            out_sum=Decimal("100.00"),
            description="Payment for goods",
            receipt=receipt,  # Передаем Receipt модель
@@ -85,7 +85,7 @@
            ],
        }
        
-       url = await client.create_payment_url(
+       url = client.create_payment_url(
            out_sum=Decimal("100.00"),
            description="Payment for goods",
            receipt=receipt_data,  # Передаем как dict
@@ -100,7 +100,7 @@
 
    receipt_json = '{"sno":"osn","items":[{"name":"Товар","quantity":1,"sum":100,"tax":"vat10"}]}'
    
-   url = await client.create_payment_url(
+   url = client.create_payment_url(
        out_sum=Decimal("100.00"),
        description="Payment",
        receipt=receipt_json,  # Передаем как JSON строку
@@ -316,7 +316,7 @@ items (Массив товаров)
                ],
            }
            
-           url = await client.create_payment_url(
+           url = client.create_payment_url(
                out_sum=Decimal("500.00"),  # Сумма должна совпадать с суммой позиций
                description="Payment for order #123",
                inv_id=123,

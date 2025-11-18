@@ -28,7 +28,7 @@ Basic Setup
        )
        
        try:
-           payment_url = await client.create_payment_url(
+           payment_url = client.create_payment_url(
                out_sum=amount,
                description=f"Payment for order #{order_id}",
                inv_id=order_id,
