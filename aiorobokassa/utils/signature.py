@@ -83,14 +83,16 @@ def calculate_payment_signature(
     password: str,
     algorithm: Union[str, SignatureAlgorithm] = SignatureAlgorithm.MD5,
     receipt: Optional[str] = None,
+    shp_params: Optional[Dict[str, str]] = None,
 ) -> str:
     """
     Calculate signature for payment URL.
 
-    Signature format: MD5(merchant_login:out_sum:inv_id:receipt:password1)
-    Order is FIXED: MerchantLogin:OutSum:InvId:Receipt:password1
+    Signature format: MD5(merchant_login:out_sum:inv_id:receipt:Shp_param1:Shp_param2:...:password1)
+    Order is FIXED: MerchantLogin:OutSum:InvId:Receipt:Shp_param1:Shp_param2:...:password1
     If InvId is not provided, it must be empty but present (two colons: ::)
     If receipt is provided, it must be included in signature calculation.
+    Shp_ parameters must be sorted alphabetically by key (without Shp_ prefix).
 
     Args:
         merchant_login: Merchant login
@@ -99,6 +101,7 @@ def calculate_payment_signature(
         password: Password (password1)
         algorithm: Hash algorithm
         receipt: Receipt JSON string for fiscalization (optional)
+        shp_params: Additional Shp_ parameters (without Shp_ prefix) (optional)
 
     Returns:
         Signature string
@@ -111,7 +114,7 @@ def calculate_payment_signature(
             raise InvalidSignatureAlgorithmError(str(e)) from e
 
     # Build signature string in FIXED order according to RoboKassa documentation
-    # Format: MerchantLogin:OutSum:InvId:Receipt:password1
+    # Format: MerchantLogin:OutSum:InvId:Receipt:Shp_param1:Shp_param2:...:password1
     signature_parts = [merchant_login, out_sum]
 
     # InvId must be present even if empty (two colons ::)
@@ -120,6 +123,12 @@ def calculate_payment_signature(
     # Receipt must be included if present
     if receipt:
         signature_parts.append(receipt)
+
+    # Add Shp_ parameters if provided (sorted alphabetically by key)
+    if shp_params:
+        sorted_shp = sorted(shp_params.items())
+        for key, value in sorted_shp:
+            signature_parts.append(value)
 
     signature_parts.append(password)
 

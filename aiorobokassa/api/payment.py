@@ -90,6 +90,7 @@ class PaymentMixin:
         # Calculate signature (receipt must be included if present)
         # Use original JSON string (not URL-encoded) for signature
         # Note: inv_id can be 0, so we check is not None, not truthiness
+        # Shp_params must be included in signature calculation
         signature = calculate_payment_signature(
             merchant_login=client.merchant_login,
             out_sum=str(request.out_sum),
@@ -97,6 +98,7 @@ class PaymentMixin:
             password=client.password1,
             algorithm=signature_algorithm,
             receipt=receipt_str,  # Use original JSON string for signature
+            shp_params=request.user_parameters,
         )
 
         # User parameters (Shp_*) - must be added before SignatureValue

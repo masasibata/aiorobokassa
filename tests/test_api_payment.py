@@ -82,6 +82,17 @@ class TestPaymentMixin:
         assert params["Shp_user_id"] == "123"
         assert params["Shp_order_id"] == "456"
 
+        # Verify that signature includes shp_params
+        expected_signature = calculate_payment_signature(
+            merchant_login=client.merchant_login,
+            out_sum="100.50",
+            inv_id=None,
+            password=client.password1,
+            algorithm=SignatureAlgorithm.MD5,
+            shp_params={"user_id": "123", "order_id": "456"},
+        )
+        assert params["SignatureValue"] == expected_signature
+
     def test_build_payment_params_test_mode(self, client):
         """Test building payment parameters in test mode."""
         from aiorobokassa.models.requests import PaymentRequest
@@ -137,6 +148,29 @@ class TestPaymentMixin:
             inv_id="12345",
             password=client.password1,
             algorithm=SignatureAlgorithm.MD5,
+        )
+        assert params["SignatureValue"] == expected_signature
+
+    def test_build_payment_params_signature_with_shp_params(self, client):
+        """Test that payment signature correctly includes shp_params."""
+        from aiorobokassa.models.requests import PaymentRequest
+
+        request = PaymentRequest(
+            out_sum=Decimal("100.50"),
+            description="Test payment",
+            inv_id=12345,
+            user_parameters={"user_id": "123", "order_id": "456"},
+        )
+        params = client._build_payment_params(request, SignatureAlgorithm.MD5)
+
+        # Verify signature includes shp_params (sorted alphabetically: order_id, then user_id)
+        expected_signature = calculate_payment_signature(
+            merchant_login=client.merchant_login,
+            out_sum="100.50",
+            inv_id="12345",
+            password=client.password1,
+            algorithm=SignatureAlgorithm.MD5,
+            shp_params={"user_id": "123", "order_id": "456"},
         )
         assert params["SignatureValue"] == expected_signature
 

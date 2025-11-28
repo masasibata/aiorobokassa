@@ -136,6 +136,51 @@ class TestCalculatePaymentSignature:
         assert sha256_sig != sha512_sig
         assert md5_sig != sha512_sig
 
+    def test_calculate_payment_signature_with_shp_params(self):
+        """Test payment signature calculation with shp_params."""
+        signature_with_shp = calculate_payment_signature(
+            merchant_login="test_merchant",
+            out_sum="100.50",
+            inv_id="12345",
+            password="password123",
+            algorithm=SignatureAlgorithm.MD5,
+            shp_params={"user_id": "123", "order_id": "456"},
+        )
+        signature_without_shp = calculate_payment_signature(
+            merchant_login="test_merchant",
+            out_sum="100.50",
+            inv_id="12345",
+            password="password123",
+            algorithm=SignatureAlgorithm.MD5,
+        )
+
+        # Signatures should be different when shp_params are included
+        assert signature_with_shp != signature_without_shp
+        assert len(signature_with_shp) == 32
+
+    def test_calculate_payment_signature_shp_params_sorted(self):
+        """Test that shp_params are sorted alphabetically in signature."""
+        # Same params in different order should produce same signature
+        signature1 = calculate_payment_signature(
+            merchant_login="test_merchant",
+            out_sum="100.50",
+            inv_id="12345",
+            password="password123",
+            algorithm=SignatureAlgorithm.MD5,
+            shp_params={"user_id": "123", "order_id": "456"},
+        )
+        signature2 = calculate_payment_signature(
+            merchant_login="test_merchant",
+            out_sum="100.50",
+            inv_id="12345",
+            password="password123",
+            algorithm=SignatureAlgorithm.MD5,
+            shp_params={"order_id": "456", "user_id": "123"},  # Different order
+        )
+
+        # Signatures should be the same (sorted alphabetically)
+        assert signature1 == signature2
+
 
 class TestVerifyResultURLSignature:
     """Tests for verify_result_url_signature function."""
