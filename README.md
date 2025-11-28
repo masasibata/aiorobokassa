@@ -4,7 +4,7 @@
 
 <div align="center">
 
-![aiorobokassa banner](docs/_static/banner.png?v=2)
+![aiorobokassa banner](docs/_static/banner.png?v=3)
 
 # aiorobokassa
 
