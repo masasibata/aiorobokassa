@@ -124,13 +124,13 @@ def calculate_payment_signature(
     if receipt:
         signature_parts.append(receipt)
 
+    signature_parts.append(password)
+
     # Add Shp_ parameters if provided (sorted alphabetically by key)
     if shp_params:
         sorted_shp = sorted(shp_params.items())
         for key, value in sorted_shp:
-            signature_parts.append(value)
-
-    signature_parts.append(password)
+            signature_parts.append(f"Shp_{key}={value}")
 
     signature_string = ":".join(signature_parts)
 
@@ -178,7 +178,7 @@ def verify_result_url_signature(
 
     # Build signature string in FIXED order: OutSum:InvId:Shp_param1:Shp_param2:...:password2
     # Shp_ parameters must be sorted alphabetically by key (with Shp_ prefix)
-    signature_parts = [out_sum, inv_id]
+    signature_parts = [out_sum, inv_id, password]
     
     # Add Shp_ parameters if provided (sorted alphabetically by key with Shp_ prefix)
     if shp_params:
@@ -187,9 +187,8 @@ def verify_result_url_signature(
             # Include both key (with Shp_ prefix) and value in signature string
             # Format: Shp_key:value, but actually RoboKassa uses just values in order
             # Let me check the actual format...
-            signature_parts.append(value)
+            signature_parts.append(f"Shp_{key}={value}")
     
-    signature_parts.append(password)
     signature_string = ":".join(signature_parts)
 
     # Calculate hash based on algorithm
@@ -238,15 +237,14 @@ def verify_success_url_signature(
 
     # Build signature string in FIXED order: OutSum:InvId:Shp_params:password1
     # Shp_ parameters must be sorted alphabetically by key
-    signature_parts = [out_sum, inv_id]
+    signature_parts = [out_sum, inv_id, password]
     
     # Add Shp_ parameters if provided (sorted alphabetically by key)
     if shp_params:
         sorted_shp = sorted(shp_params.items())
         for key, value in sorted_shp:
-            signature_parts.append(value)
+            signature_parts.append(f"Shp_{key}={value}")
     
-    signature_parts.append(password)
     signature_string = ":".join(signature_parts)
 
     # Calculate hash based on algorithm
