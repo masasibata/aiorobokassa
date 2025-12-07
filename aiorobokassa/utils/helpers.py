@@ -17,15 +17,11 @@ def build_url(base_url: str, params: Dict[str, Optional[str]]) -> str:
     Returns:
         URL with query string
     """
-    # Filter out None values and convert to strings
     filtered_params = {k: str(v) for k, v in params.items() if v is not None}
 
     if not filtered_params:
         return base_url
 
-    # Use urlencode which properly encodes all parameters
-    # Note: urlencode handles encoding automatically, but we need to ensure
-    # SignatureValue is last (Python 3.7+ dicts maintain insertion order)
     query_string = urlencode(filtered_params, doseq=False)
 
     return f"{base_url}?{query_string}"
@@ -44,6 +40,6 @@ def parse_shp_params(params: Dict[str, str]) -> Dict[str, str]:
     shp_params = {}
     for key, value in params.items():
         if key.startswith("Shp_"):
-            shp_key = key[4:]  # Remove "Shp_" prefix
+            shp_key = key[4:]
             shp_params[shp_key] = value
     return shp_params

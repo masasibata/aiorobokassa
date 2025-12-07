@@ -11,8 +11,8 @@ sys.path.insert(0, str(project_root))
 project = "aiorobokassa"
 copyright = "2025, Masa"
 author = "Masa"
-release = "1.1.2"
-version = "1.1.2"
+release = "1.1.3"
+version = "1.1.3"
 
 # Extensions
 extensions = [

@@ -43,12 +43,9 @@ class ReceiptItem(BaseModel):
         if self.sum is None and self.cost is None:
             raise ValueError("Either 'sum' or 'cost' must be provided")
         if self.sum is not None and self.cost is not None:
-            # If both provided, calculate sum from cost * quantity
             calculated_sum = Decimal(str(self.cost)) * Decimal(str(self.quantity))
-            # Allow small floating point differences
             if abs(self.sum - calculated_sum) > Decimal("0.01"):
                 raise ValueError(f"sum ({self.sum}) must equal cost * quantity ({calculated_sum})")
-        # Calculate sum from cost if sum is not provided
         if self.sum is None and self.cost is not None:
             self.sum = Decimal(str(self.cost)) * Decimal(str(self.quantity))
         return self
@@ -71,11 +68,8 @@ class ReceiptItem(BaseModel):
             "tax": self.tax.value,
         }
 
-        # If cost was originally provided, use it; otherwise use sum
-        # Check if cost was in original input by checking if sum equals cost * quantity
         if self.cost is not None:
             calculated_sum = Decimal(str(self.cost)) * Decimal(str(self.quantity))
-            # If sum equals calculated, prefer cost; otherwise use sum
             if self.sum is None or abs(self.sum - calculated_sum) < Decimal("0.01"):
                 data["cost"] = float(self.cost)
             else:

@@ -34,7 +34,6 @@ class PaymentRequest(BaseModel):
     @classmethod
     def validate_amount(cls, v: Union[Decimal, float, int, str]) -> Decimal:
         """Validate and convert payment amount to Decimal."""
-        # Convert to Decimal
         if isinstance(v, Decimal):
             amount = v
         elif isinstance(v, (int, float)):
@@ -47,7 +46,6 @@ class PaymentRequest(BaseModel):
         else:
             raise ValueError(f"Amount must be Decimal, float, int, or string, got {type(v)}")
 
-        # Validate amount is positive
         if amount <= 0:
             raise ValueError("Payment amount must be positive")
         return amount
@@ -69,15 +67,12 @@ class PaymentRequest(BaseModel):
         if isinstance(v, Receipt):
             return v.to_json_string()
         if isinstance(v, dict):
-            # Try to create Receipt from dict
             try:
                 receipt = Receipt.from_dict(v)
                 return receipt.to_json_string()
             except Exception:
-                # Fallback to direct JSON dump if Receipt model fails
                 return json.dumps(v, ensure_ascii=False)
         if isinstance(v, str):
-            # Validate it's valid JSON
             try:
                 json.loads(v)
             except json.JSONDecodeError:
@@ -374,7 +369,6 @@ class SplitMerchant(BaseModel):
         else:
             raise ValueError(f"Amount must be Decimal, float, int, or string, got {type(v)}")
 
-        # Amount can be 0 for merchants that don't need payment
         if amount < 0:
             raise ValueError("Amount must be non-negative")
         return amount
@@ -392,19 +386,16 @@ class SplitMerchant(BaseModel):
         if isinstance(v, Receipt):
             return SplitMerchantReceipt(sno=v.sno, items=v.items)
         if isinstance(v, dict):
-            # Try to create Receipt from dict first
             try:
                 receipt = Receipt.from_dict(v)
                 return SplitMerchantReceipt(sno=receipt.sno, items=receipt.items)
             except Exception:
-                # Fallback to direct creation
                 sno_value = v.get("sno")
                 sno = TaxSystem(sno_value) if sno_value else None
                 items_data = v.get("items", [])
                 items = [ReceiptItem(**item) for item in items_data]
                 return SplitMerchantReceipt(sno=sno, items=items)
         if isinstance(v, str):
-            # Validate it's valid JSON
             try:
                 receipt_dict = json.loads(v)
                 receipt = Receipt.from_dict(receipt_dict)
@@ -424,7 +415,6 @@ class SplitMerchant(BaseModel):
         if self.invoice_id is not None:
             data["InvoiceId"] = self.invoice_id
         if self.receipt:
-            # self.receipt is guaranteed to be SplitMerchantReceipt after validation
             receipt = cast(SplitMerchantReceipt, self.receipt)
             receipt_dict = receipt.to_api_dict()
             data["receipt"] = receipt_dict

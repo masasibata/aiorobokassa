@@ -33,19 +33,16 @@ def calculate_signature(
     Raises:
         InvalidSignatureAlgorithmError: If algorithm is not supported
     """
-    # Convert string to enum if needed
     if isinstance(algorithm, str):
         try:
             algorithm = SignatureAlgorithm.from_string(algorithm)
         except ValueError as e:
             raise InvalidSignatureAlgorithmError(str(e)) from e
 
-    # Sort values by key and create signature string
     sorted_items = sorted(values.items())
     signature_string = ":".join(str(value) for _, value in sorted_items)
     signature_string += f":{password}"
 
-    # Calculate hash based on algorithm
     hash_func = ALGORITHMS.get(algorithm)
     if hash_func is None:
         raise InvalidSignatureAlgorithmError(f"Unsupported algorithm: {algorithm}")
@@ -88,8 +85,9 @@ def calculate_payment_signature(
     """
     Calculate signature for payment URL.
 
-    Signature format: MD5(merchant_login:out_sum:inv_id:receipt:Shp_param1:Shp_param2:...:password1)
-    Order is FIXED: MerchantLogin:OutSum:InvId:Receipt:Shp_param1:Shp_param2:...:password1
+    Signature format: MD5(merchant_login:out_sum:inv_id:receipt:password1:Shp_param1:Shp_param2:...)
+    Order is FIXED: MerchantLogin:OutSum:InvId:Receipt:password1:Shp_param1:Shp_param2:...
+    According to Robokassa documentation: MerchantLogin:OutSum:InvId:Пароль#1:Shp_id=126:Shp_login=Vasya
     If InvId is not provided, it must be empty but present (two colons: ::)
     If receipt is provided, it must be included in signature calculation.
     Shp_ parameters must be sorted alphabetically by key (without Shp_ prefix).
@@ -106,27 +104,21 @@ def calculate_payment_signature(
     Returns:
         Signature string
     """
-    # Convert string to enum if needed
     if isinstance(algorithm, str):
         try:
             algorithm = SignatureAlgorithm.from_string(algorithm)
         except ValueError as e:
             raise InvalidSignatureAlgorithmError(str(e)) from e
 
-    # Build signature string in FIXED order according to RoboKassa documentation
-    # Format: MerchantLogin:OutSum:InvId:Receipt:Shp_param1:Shp_param2:...:password1
     signature_parts = [merchant_login, out_sum]
-
-    # InvId must be present even if empty (two colons ::)
     signature_parts.append(inv_id if inv_id else "")
 
-    # Receipt must be included if present
     if receipt:
         signature_parts.append(receipt)
 
     signature_parts.append(password)
 
-    # Add Shp_ parameters if provided (sorted alphabetically by key)
+    # Shp_ parameters come AFTER password: MerchantLogin:OutSum:InvId:Пароль#1:Shp_id=126:Shp_login=Vasya
     if shp_params:
         sorted_shp = sorted(shp_params.items())
         for key, value in sorted_shp:
@@ -134,7 +126,6 @@ def calculate_payment_signature(
 
     signature_string = ":".join(signature_parts)
 
-    # Calculate hash based on algorithm
     hash_func = ALGORITHMS.get(algorithm)
     if hash_func is None:
         raise InvalidSignatureAlgorithmError(f"Unsupported algorithm: {algorithm}")
@@ -169,36 +160,30 @@ def verify_result_url_signature(
     Returns:
         True if signature is valid
     """
-    # Convert string to enum if needed
     if isinstance(algorithm, str):
         try:
             algorithm = SignatureAlgorithm.from_string(algorithm)
         except ValueError as e:
             raise InvalidSignatureAlgorithmError(str(e)) from e
 
-    # Build signature string in FIXED order: OutSum:InvId:Shp_param1:Shp_param2:...:password2
-    # Shp_ parameters must be sorted alphabetically by key (with Shp_ prefix)
-    signature_parts = [out_sum, inv_id, password]
-    
-    # Add Shp_ parameters if provided (sorted alphabetically by key with Shp_ prefix)
+    signature_parts = [out_sum, inv_id]
+
+    # Shp_ parameters must be added BEFORE password: OutSum:InvId:Shp_key=value:password2
     if shp_params:
         sorted_shp = sorted(shp_params.items())
         for key, value in sorted_shp:
-            # Include both key (with Shp_ prefix) and value in signature string
-            # Format: Shp_key:value, but actually RoboKassa uses just values in order
-            # Let me check the actual format...
             signature_parts.append(f"Shp_{key}={value}")
-    
+
+    signature_parts.append(password)
     signature_string = ":".join(signature_parts)
 
-    # Calculate hash based on algorithm
     hash_func = ALGORITHMS.get(algorithm)
     if hash_func is None:
         raise InvalidSignatureAlgorithmError(f"Unsupported algorithm: {algorithm}")
 
     hash_obj = hash_func(signature_string.encode("utf-8"))
     calculated_signature = hash_obj.hexdigest().upper()
-    
+
     return calculated_signature == received_signature.upper()
 
 
@@ -228,33 +213,30 @@ def verify_success_url_signature(
     Returns:
         True if signature is valid
     """
-    # Convert string to enum if needed
     if isinstance(algorithm, str):
         try:
             algorithm = SignatureAlgorithm.from_string(algorithm)
         except ValueError as e:
             raise InvalidSignatureAlgorithmError(str(e)) from e
 
-    # Build signature string in FIXED order: OutSum:InvId:Shp_params:password1
-    # Shp_ parameters must be sorted alphabetically by key
-    signature_parts = [out_sum, inv_id, password]
-    
-    # Add Shp_ parameters if provided (sorted alphabetically by key)
+    signature_parts = [out_sum, inv_id]
+
+    # Shp_ parameters must be added BEFORE password: OutSum:InvId:Shp_key=value:password1
     if shp_params:
         sorted_shp = sorted(shp_params.items())
         for key, value in sorted_shp:
             signature_parts.append(f"Shp_{key}={value}")
-    
+
+    signature_parts.append(password)
     signature_string = ":".join(signature_parts)
 
-    # Calculate hash based on algorithm
     hash_func = ALGORITHMS.get(algorithm)
     if hash_func is None:
         raise InvalidSignatureAlgorithmError(f"Unsupported algorithm: {algorithm}")
 
     hash_obj = hash_func(signature_string.encode("utf-8"))
     calculated_signature = hash_obj.hexdigest().upper()
-    
+
     return calculated_signature == received_signature.upper()
 
 
@@ -280,17 +262,14 @@ def calculate_split_signature(
     Raises:
         InvalidSignatureAlgorithmError: If algorithm is not supported
     """
-    # Convert string to enum if needed
     if isinstance(algorithm, str):
         try:
             algorithm = SignatureAlgorithm.from_string(algorithm)
         except ValueError as e:
             raise InvalidSignatureAlgorithmError(str(e)) from e
 
-    # Build signature string: invoice_json + password
     signature_string = invoice_json + password
 
-    # Calculate hash based on algorithm
     hash_func = ALGORITHMS.get(algorithm)
     if hash_func is None:
         raise InvalidSignatureAlgorithmError(f"Unsupported algorithm: {algorithm}")

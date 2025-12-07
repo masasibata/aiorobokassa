@@ -47,7 +47,6 @@ def base64url_decode(data: str) -> bytes:
     Returns:
         Decoded bytes
     """
-    # Add padding if needed
     padding = 4 - len(data) % 4
     if padding != 4:
         data += "=" * padding
@@ -73,10 +72,8 @@ def create_jwt_token(
     Raises:
         InvalidSignatureAlgorithmError: If algorithm is not supported
     """
-    # Convert string to enum if needed
     if isinstance(algorithm, str):
         alg_str = algorithm.upper()
-        # Map algorithm names
         if alg_str in ["SHA1", "HS1"]:
             alg_str = "SHA1"
         elif alg_str in ["SHA256", "HS256"]:
@@ -94,32 +91,24 @@ def create_jwt_token(
     else:
         alg_str = algorithm.value.upper()
 
-    # Create header
     header = {"typ": "JWT", "alg": alg_str}
     header_json = json.dumps(header, separators=(",", ":"))
     header_encoded = base64url_encode(header_json.encode("utf-8"))
 
-    # Create payload
     payload_json = json.dumps(payload, separators=(",", ":"), ensure_ascii=False)
     payload_encoded = base64url_encode(payload_json.encode("utf-8"))
 
-    # Create signature
     message = f"{header_encoded}.{payload_encoded}".encode("utf-8")
     secret_bytes = secret_key.encode("utf-8")
 
-    # Get hash function for HMAC
     hash_name = HMAC_ALGORITHMS.get(alg_str)
     if hash_name is None:
         raise InvalidSignatureAlgorithmError(f"Unsupported algorithm: {alg_str}")
 
-    # Import hashlib
     import hashlib
 
-    # Get hash function name for HMAC (use string for digestmod)
-    # For RIPEMD160, we need to use hashlib.new, but for others we can use the name directly
     if hash_name == "ripemd160":
         try:
-            # Test if RIPEMD160 is available
             hashlib.new("ripemd160")
             digestmod: Union[str, Any] = "ripemd160"
         except ValueError:
@@ -130,9 +119,7 @@ def create_jwt_token(
     else:
         digestmod = hash_name
 
-    # Calculate HMAC
     signature_bytes = hmac.new(secret_bytes, message, digestmod=digestmod).digest()
     signature_encoded = base64url_encode(signature_bytes)
 
-    # Combine: header.payload.signature
     return f"{header_encoded}.{payload_encoded}.{signature_encoded}"

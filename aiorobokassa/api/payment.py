@@ -45,20 +45,16 @@ class PaymentMixin:
         else:
             client = self  # type: ignore[assignment]
 
-        # Build params dict - SignatureValue will be added last
         params: Dict[str, Optional[str]] = {
             "MerchantLogin": client.merchant_login,
             "OutSum": str(request.out_sum),
         }
 
-        # InvId must be included even if None (will be empty string in signature)
         if request.inv_id is not None:
             params["InvId"] = str(request.inv_id)
 
-        # Description - must be properly URL-encoded
         params["Description"] = request.description
 
-        # Map request fields to URL parameters
         field_mapping = {
             "email": "Email",
             "culture": "Culture",
@@ -71,41 +67,36 @@ class PaymentMixin:
             if value is not None:
                 params[param_name] = str(value)
 
-        # Test mode
         if request.is_test is not None:
             params["IsTest"] = str(request.is_test)
         elif client.test_mode:
             params["IsTest"] = "1"
 
-        # Receipt for fiscalization (must be before signature calculation)
         receipt_str: Optional[str] = None
         if request.receipt:
-            # Receipt is already JSON string after validation (validator converts it)
-            # Type ignore because validator ensures it's a string
             receipt_str = request.receipt  # type: ignore[assignment]
-            # URL-encode receipt before adding to params
             if receipt_str is not None:
                 params["Receipt"] = quote(receipt_str, safe="")
 
-        # Calculate signature (receipt must be included if present)
-        # Use original JSON string (not URL-encoded) for signature
-        # Note: inv_id can be 0, so we check is not None, not truthiness
-        # Shp_params must be included in signature calculation
         signature = calculate_payment_signature(
             merchant_login=client.merchant_login,
             out_sum=str(request.out_sum),
             inv_id=str(request.inv_id) if request.inv_id is not None else None,
             password=client.password1,
             algorithm=signature_algorithm,
-            receipt=receipt_str,  # Use original JSON string for signature
+            receipt=receipt_str,
             shp_params=request.user_parameters,
         )
 
-        # User parameters (Shp_*) - must be added before SignatureValue
+        # Shp_ parameters must be sorted alphabetically by full name to match signature order
         if request.user_parameters:
-            params.update({f"Shp_{k}": v for k, v in request.user_parameters.items()})
+            sorted_shp_items = sorted(
+                ((f"Shp_{k}", v) for k, v in request.user_parameters.items()),
+                key=lambda x: x[0]
+            )
+            for param_name, param_value in sorted_shp_items:
+                params[param_name] = param_value
 
-        # SignatureValue must be LAST parameter
         params["SignatureValue"] = signature
 
         return params
@@ -316,14 +307,12 @@ class PaymentMixin:
         else:
             client = self  # type: ignore[assignment]
 
-        # Convert shop_params to list of ShopParam models if provided
         shop_params_list = None
         if shop_params:
             from aiorobokassa.models.requests import ShopParam
 
             shop_params_list = [ShopParam(name=p["name"], value=p["value"]) for p in shop_params]
 
-        # Convert split_merchants to list of SplitMerchant models
         from aiorobokassa.models.requests import SplitMerchant
 
         split_merchants_list = []
@@ -336,7 +325,6 @@ class PaymentMixin:
             )
             split_merchants_list.append(split_merchant)
 
-        # Create request model
         request = SplitPaymentRequest(
             out_amount=out_amount,
             merchant_id=merchant_id,
@@ -350,22 +338,18 @@ class PaymentMixin:
             expiration_date=expiration_date,
         )
 
-        # Convert to JSON string (for signature calculation - must be "pure" JSON, not URL-encoded)
         invoice_json = request.to_json_string()
 
-        # Calculate signature using master merchant's password1
         signature = calculate_split_signature(
             invoice_json=invoice_json,
             password=client.password1,
             algorithm=signature_algorithm,
         )
 
-        # URL-encode the invoice JSON for the URL parameter
         from urllib.parse import quote
 
         invoice_encoded = quote(invoice_json, safe="")
 
-        # Build URL with parameters
         params: Dict[str, Optional[str]] = {
             "invoice": invoice_encoded,
             "signature": signature,

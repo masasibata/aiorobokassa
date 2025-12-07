@@ -117,24 +117,20 @@ class RefundMixin:
                 "Please provide password3 when initializing the client."
             )
 
-        # Create request model
         request = RefundCreateRequest(
             op_key=op_key,
             refund_sum=refund_sum,
             invoice_items=invoice_items,
         )
 
-        # Convert to payload dict
         payload = request.to_api_dict()
 
-        # Create JWT token using password3
         jwt_token = create_jwt_token(
             payload=payload,
             secret_key=client.password3,
             algorithm=signature_algorithm,
         )
 
-        # Send request
         response = await client._post(
             f"{REFUND_API_BASE_URL}/Create",
             json=jwt_token,
@@ -170,7 +166,6 @@ class RefundMixin:
         else:
             client = self  # type: ignore[assignment]
 
-        # Send GET request
         response = await client._get(
             f"{REFUND_API_BASE_URL}/GetState",
             params={"id": request_id},
@@ -179,7 +174,6 @@ class RefundMixin:
         async with response:
             result = await response.json()
 
-            # Check if it's an error response
             if "message" in result and "requestId" not in result:
                 raise APIError(f"Failed to get refund status: {result.get('message')}")
 

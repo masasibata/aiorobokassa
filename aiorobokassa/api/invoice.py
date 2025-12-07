@@ -67,13 +67,11 @@ class InvoiceMixin:
         else:
             client = self  # type: ignore[assignment]
 
-        # Convert invoice_type to string if enum
         if isinstance(invoice_type, InvoiceType):
             invoice_type_str = invoice_type.value
         else:
             invoice_type_str = str(invoice_type)
 
-        # Build payload
         payload: Dict[str, Any] = {
             "MerchantLogin": client.merchant_login,
             "InvoiceType": invoice_type_str,
@@ -90,13 +88,10 @@ class InvoiceMixin:
         if user_fields:
             payload["UserFields"] = user_fields
 
-        # Handle receipt and invoice_items
         if invoice_items and receipt:
             raise ValueError("Cannot provide both invoice_items and receipt. Use only one.")
 
-        # Convert receipt to invoice_items if receipt is provided and invoice_items is not
         if receipt and not invoice_items:
-            # Parse receipt
             if isinstance(receipt, Receipt):
                 receipt_model = receipt
             elif isinstance(receipt, dict):
@@ -107,10 +102,8 @@ class InvoiceMixin:
             else:
                 raise ValueError("receipt must be Receipt model, JSON string or dict")
 
-            # Convert ReceiptItem to InvoiceItem
             invoice_items = []
             for receipt_item in receipt_model.items:
-                # Calculate cost from sum/quantity if needed
                 cost_value: Union[float, Decimal] = 0.0
                 if receipt_item.cost is not None:
                     cost_value = float(receipt_item.cost)
@@ -128,25 +121,20 @@ class InvoiceMixin:
                 )
                 invoice_items.append(invoice_item)
 
-            # Add Sno from receipt if present
             if receipt_model.sno:
                 payload["Sno"] = receipt_model.sno.value
 
-        # Add invoice items if provided
         if invoice_items:
             payload["InvoiceItems"] = [item.to_api_dict() for item in invoice_items]
 
-        # Add URL redirects if provided
         if success_url:
             payload["SuccessUrl2Data"] = {"Url": success_url, "Method": success_url_method}
         if fail_url:
             payload["FailUrl2Data"] = {"Url": fail_url, "Method": fail_url_method}
 
-        # Create JWT token
         secret_key = f"{client.merchant_login}:{client.password1}"
         jwt_token = create_jwt_token(payload, secret_key, signature_algorithm)
 
-        # aiohttp will serialize the string as JSON string (with quotes)
         response = await client._post(
             f"{INVOICE_API_BASE_URL}/CreateInvoice",
             json=jwt_token,
@@ -190,7 +178,6 @@ class InvoiceMixin:
                 "At least one identifier (inv_id, invoice_id, or encoded_id) must be provided"
             )
 
-        # Build payload
         payload: Dict[str, Any] = {"MerchantLogin": client.merchant_login}
         if inv_id is not None:
             payload["InvId"] = inv_id
@@ -199,12 +186,9 @@ class InvoiceMixin:
         if encoded_id:
             payload["EncodedId"] = encoded_id
 
-        # Create JWT token
         secret_key = f"{client.merchant_login}:{client.password1}"
         jwt_token = create_jwt_token(payload, secret_key, signature_algorithm)
 
-        # Send request using json= parameter (like in robokassa library)
-        # aiohttp will serialize the string as JSON string (with quotes)
         response = await client._post(
             f"{INVOICE_API_BASE_URL}/DeactivateInvoice",
             json=jwt_token,
@@ -259,7 +243,6 @@ class InvoiceMixin:
         else:
             client = self  # type: ignore[assignment]
 
-        # Build payload
         payload: Dict[str, Any] = {
             "MerchantLogin": client.merchant_login,
             "CurrentPage": current_page,
@@ -285,12 +268,9 @@ class InvoiceMixin:
         if sum_to is not None:
             payload["SumTo"] = sum_to
 
-        # Create JWT token
         secret_key = f"{client.merchant_login}:{client.password1}"
         jwt_token = create_jwt_token(payload, secret_key, signature_algorithm)
 
-        # Send request using json= parameter (like in robokassa library)
-        # aiohttp will serialize the string as JSON string (with quotes)
         response = await client._post(
             f"{INVOICE_API_BASE_URL}/GetInvoiceInformationList",
             json=jwt_token,
