@@ -85,9 +85,8 @@ def calculate_payment_signature(
     """
     Calculate signature for payment URL.
 
-    Signature format: MD5(merchant_login:out_sum:inv_id:receipt:password1:Shp_param1:Shp_param2:...)
-    Order is FIXED: MerchantLogin:OutSum:InvId:Receipt:password1:Shp_param1:Shp_param2:...
-    According to Robokassa documentation: MerchantLogin:OutSum:InvId:Пароль#1:Shp_id=126:Shp_login=Vasya
+    Signature format: MD5(merchant_login:out_sum:inv_id:receipt:Shp_param1:Shp_param2:...:password1)
+    Order is FIXED: MerchantLogin:OutSum:InvId:Receipt:Shp_param1:Shp_param2:...:password1
     If InvId is not provided, it must be empty but present (two colons: ::)
     If receipt is provided, it must be included in signature calculation.
     Shp_ parameters must be sorted alphabetically by key (without Shp_ prefix).
@@ -118,7 +117,6 @@ def calculate_payment_signature(
 
     signature_parts.append(password)
 
-    # Shp_ parameters come AFTER password: MerchantLogin:OutSum:InvId:Пароль#1:Shp_id=126:Shp_login=Vasya
     if shp_params:
         sorted_shp = sorted(shp_params.items())
         for key, value in sorted_shp:
@@ -166,15 +164,13 @@ def verify_result_url_signature(
         except ValueError as e:
             raise InvalidSignatureAlgorithmError(str(e)) from e
 
-    signature_parts = [out_sum, inv_id]
+    signature_parts = [out_sum, inv_id, password]
 
-    # Shp_ parameters must be added BEFORE password: OutSum:InvId:Shp_key=value:password2
     if shp_params:
         sorted_shp = sorted(shp_params.items())
         for key, value in sorted_shp:
             signature_parts.append(f"Shp_{key}={value}")
 
-    signature_parts.append(password)
     signature_string = ":".join(signature_parts)
 
     hash_func = ALGORITHMS.get(algorithm)
@@ -219,15 +215,13 @@ def verify_success_url_signature(
         except ValueError as e:
             raise InvalidSignatureAlgorithmError(str(e)) from e
 
-    signature_parts = [out_sum, inv_id]
+    signature_parts = [out_sum, inv_id, password]
 
-    # Shp_ parameters must be added BEFORE password: OutSum:InvId:Shp_key=value:password1
     if shp_params:
         sorted_shp = sorted(shp_params.items())
         for key, value in sorted_shp:
             signature_parts.append(f"Shp_{key}={value}")
 
-    signature_parts.append(password)
     signature_string = ":".join(signature_parts)
 
     hash_func = ALGORITHMS.get(algorithm)

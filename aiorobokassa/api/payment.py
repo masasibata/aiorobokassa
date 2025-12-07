@@ -91,8 +91,7 @@ class PaymentMixin:
         # Shp_ parameters must be sorted alphabetically by full name to match signature order
         if request.user_parameters:
             sorted_shp_items = sorted(
-                ((f"Shp_{k}", v) for k, v in request.user_parameters.items()),
-                key=lambda x: x[0]
+                ((f"Shp_{k}", v) for k, v in request.user_parameters.items()), key=lambda x: x[0]
             )
             for param_name, param_value in sorted_shp_items:
                 params[param_name] = param_value

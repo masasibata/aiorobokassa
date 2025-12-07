@@ -227,6 +227,7 @@ class TestPaymentMixin:
         inv_id = "12345"
         # Calculate correct signature for ResultURL (uses password2) with correct order: OutSum:InvId:password2
         import hashlib
+
         signature_string = f"{out_sum}:{inv_id}:{client.password2}"
         signature = hashlib.md5(signature_string.encode("utf-8")).hexdigest().upper()
 
@@ -252,14 +253,14 @@ class TestPaymentMixin:
         out_sum = "100.50"
         inv_id = "12345"
         shp_params = {"user_id": "123"}
-        # Calculate correct signature WITH shp_params in correct order: OutSum:InvId:Shp_user_id=123:password2
+        # Calculate correct signature WITH shp_params in correct order: OutSum:InvId:password2:Shp_user_id=123
         # Shp_ parameters must be in format "Shp_key=value"
         import hashlib
+
         sorted_shp = sorted(shp_params.items())
-        signature_parts = [out_sum, inv_id]
+        signature_parts = [out_sum, inv_id, client.password2]
         for key, value in sorted_shp:
             signature_parts.append(f"Shp_{key}={value}")
-        signature_parts.append(client.password2)
         signature_string = ":".join(signature_parts)
         signature = hashlib.md5(signature_string.encode("utf-8")).hexdigest().upper()
 
@@ -278,6 +279,7 @@ class TestPaymentMixin:
         inv_id = "12345"
         # Calculate correct signature using password1 with correct order: OutSum:InvId:password1
         import hashlib
+
         signature_string = f"{out_sum}:{inv_id}:{client.password1}"
         signature = hashlib.md5(signature_string.encode("utf-8")).hexdigest().upper()
 
@@ -302,14 +304,14 @@ class TestPaymentMixin:
         out_sum = "100.50"
         inv_id = "12345"
         shp_params = {"user_id": "123", "order_id": "456"}
-        # Calculate correct signature WITH shp_params in correct order: OutSum:InvId:Shp_order_id=456:Shp_user_id=123:password1
+        # Calculate correct signature WITH shp_params in correct order: OutSum:InvId:password1:Shp_order_id=456:Shp_user_id=123
         # Shp_ parameters must be in format "Shp_key=value"
         import hashlib
+
         sorted_shp = sorted(shp_params.items())  # [('order_id', '456'), ('user_id', '123')]
-        signature_parts = [out_sum, inv_id]
+        signature_parts = [out_sum, inv_id, client.password1]
         for key, value in sorted_shp:
             signature_parts.append(f"Shp_{key}={value}")
-        signature_parts.append(client.password1)
         signature_string = ":".join(signature_parts)
         signature = hashlib.md5(signature_string.encode("utf-8")).hexdigest().upper()
 

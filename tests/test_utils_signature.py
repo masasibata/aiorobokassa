@@ -192,6 +192,7 @@ class TestVerifyResultURLSignature:
         password = "password123"
         # Calculate signature manually with correct order: OutSum:InvId:password2
         import hashlib
+
         signature_string = f"{out_sum}:{inv_id}:{password}"
         calculated = hashlib.md5(signature_string.encode("utf-8")).hexdigest().upper()
         assert verify_result_url_signature(
@@ -214,14 +215,14 @@ class TestVerifyResultURLSignature:
         inv_id = "12345"
         password = "password123"
         shp_params = {"user_id": "123", "order_id": "456"}
-        # Calculate signature with shp_params in correct order: OutSum:InvId:Shp_order_id=456:Shp_user_id=123:password2
+        # Calculate signature with shp_params in correct order: OutSum:InvId:password2:Shp_order_id=456:Shp_user_id=123
         # Shp_ parameters must be sorted alphabetically by key and in format "Shp_key=value"
         import hashlib
+
         sorted_shp = sorted(shp_params.items())  # [('order_id', '456'), ('user_id', '123')]
-        signature_parts = [out_sum, inv_id]
+        signature_parts = [out_sum, inv_id, password]
         for key, value in sorted_shp:
             signature_parts.append(f"Shp_{key}={value}")
-        signature_parts.append(password)
         signature_string = ":".join(signature_parts)
         calculated = hashlib.md5(signature_string.encode("utf-8")).hexdigest().upper()
         assert verify_result_url_signature(
@@ -239,6 +240,7 @@ class TestVerifySuccessURLSignature:
         password = "password123"
         # Calculate signature manually with correct order: OutSum:InvId:password1
         import hashlib
+
         signature_string = f"{out_sum}:{inv_id}:{password}"
         calculated = hashlib.md5(signature_string.encode("utf-8")).hexdigest().upper()
         assert verify_success_url_signature(
@@ -261,14 +263,14 @@ class TestVerifySuccessURLSignature:
         inv_id = "12345"
         password = "password123"
         shp_params = {"user_id": "123"}
-        # Calculate signature with shp_params in correct order: OutSum:InvId:Shp_user_id=123:password1
+        # Calculate signature with shp_params in correct order: OutSum:InvId:password1:Shp_user_id=123
         # Shp_ parameters must be in format "Shp_key=value"
         import hashlib
+
         sorted_shp = sorted(shp_params.items())  # [('user_id', '123')]
-        signature_parts = [out_sum, inv_id]
+        signature_parts = [out_sum, inv_id, password]
         for key, value in sorted_shp:
             signature_parts.append(f"Shp_{key}={value}")
-        signature_parts.append(password)
         signature_string = ":".join(signature_parts)
         calculated = hashlib.md5(signature_string.encode("utf-8")).hexdigest().upper()
         assert verify_success_url_signature(
